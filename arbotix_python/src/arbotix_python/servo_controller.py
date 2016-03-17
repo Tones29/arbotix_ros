@@ -379,7 +379,8 @@ class ServoController(Controller):
 
     def update(self):
         """ Read servo positions, update them. """
-        if rospy.Time.now() > self.r_next and not self.fake:
+        time_now = rospy.Time.now()
+        if time_now > self.r_next and not self.fake:
             if self.device.use_sync_read:
                 # arbotix/servostik/wifi board sync_read
                 synclist = list()
@@ -404,9 +405,9 @@ class ServoController(Controller):
                 # direct connection, or other hardware with no sync_read capability
                 for joint in self.dynamixels:
                     joint.setCurrentFeedback(self.device.getPosition(joint.id))
-            self.r_next = rospy.Time.now() + self.r_delta
+            self.r_next += self.r_delta
 
-        if rospy.Time.now() > self.w_next:
+        if time_now > self.w_next:
             if self.device.use_sync_write and not self.fake:
                 syncpkt = list()
                 for joint in self.dynamixels:
@@ -415,9 +416,9 @@ class ServoController(Controller):
                         syncpkt.append([joint.id,int(v)%256,int(v)>>8])                         
                 if len(syncpkt) > 0:
                 
-                    t_1 = rospy.Time.now()  
+                    #t_1 = rospy.Time.now()  
                     self.device.syncWrite(P_GOAL_POSITION_L,syncpkt)
-                    print 'syncWrite took ' + repr((rospy.Time.now().to_sec() - t_1.to_sec())*1000) + ' milliseconds.'
+                    #print 'syncWrite took ' + repr((rospy.Time.now().to_sec() - t_1.to_sec())*1000) + ' milliseconds.'
                     
             else:
                 for joint in self.dynamixels:
@@ -428,7 +429,7 @@ class ServoController(Controller):
                 v = joint.interpolate(1.0/self.w_delta.to_sec())
                 if v != None:   # if it was dirty   
                     self.device.setServo(joint.id, v)
-            self.w_next = rospy.Time.now() + self.w_delta
+            self.w_next += self.w_delta
 
     def getDiagnostics(self):
         """ Update status of servos (voltages, temperatures). """
