@@ -109,39 +109,51 @@ class FollowController(Controller):
     def executeTrajectory(self, traj):
         rospy.loginfo("Executing trajectory")
         rospy.logdebug(traj)
-        # carry out trajectory
+        ## carry out trajectory
+        
+        # Determine indexes of joints (Assumption: Each joint is mentioned in the trajectory msg)
         try:
             indexes = [traj.joint_names.index(joint) for joint in self.joints]
         except ValueError as val:
             rospy.logerr("Invalid joint in trajectory.")
             return False
 
-        # get starting timestamp, MoveIt uses 0, need to fill in
+        ## get starting timestamp, MoveIt uses 0, need to fill in (REMARK: What happens, if start in past?)
         start = traj.header.stamp
         if start.secs == 0 and start.nsecs == 0:
             start = rospy.Time.now()
 
         r = rospy.Rate(self.rate)
-        last = [ self.device.joints[joint].position for joint in self.joints ]
+        
+        # Get initial joint position
+        last = [ self.device.joints[joint].position for joint in self.joints ] 
+        
+        
         for point in traj.points:
+        
+        		# Wait for start time (REMARK: Why not outside of the loop, why this complicated?)
             while rospy.Time.now() + rospy.Duration(0.01) < start:
                 rospy.sleep(0.01)
-            desired = [ point.positions[k] for k in indexes ]
+                
+            desired = [ point.positions[k] for k in indexes ] # In order of self.joints
             endtime = start + point.time_from_start
-            while rospy.Time.now() + rospy.Duration(0.01) < endtime:
-                err = [ (d-c) for d,c in zip(desired,last) ]
+            while rospy.Time.now() + rospy.Duration(0.01) < endtime: # Execute until endtime
+                err = [ (d-c) for d,c in zip(desired,last) ] # In order of self.joints
                 velocity = [ abs(x / (self.rate * (endtime - rospy.Time.now()).to_sec())) for x in err ]
                 rospy.logdebug(err)
                 for i in range(len(self.joints)):
-                    if err[i] > 0.001 or err[i] < -0.001:
+                    if err[i] > 0.001 or err[i] < -0.001: # Only execute, if error large enough
                         cmd = err[i] 
+                        
+                        # Make sure that cmd is within limits (REMARK: Which limits?)
                         top = velocity[i]
                         if cmd > top:
                             cmd = top
                         elif cmd < -top:
                             cmd = -top
-                        last[i] += cmd
-                        self.device.joints[self.joints[i]].setControlOutput(last[i])
+                        
+                        last[i] += cmd # Update the last position
+                        self.device.joints[self.joints[i]].setControlOutput(last[i]) # Send command to reach new position
                     else:
                         velocity[i] = 0
                 r.sleep()

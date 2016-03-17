@@ -135,20 +135,38 @@ class ArbotixROS(ArbotiX):
 
         # main loop -- do all the read/write here
         while not rospy.is_shutdown():
-    
+            
+            #t_0 = rospy.Time.now()
+            
             # update controllers
             for controller in self.controllers:
                 controller.update()
+                
+            #t_1 = rospy.Time.now()
+            #if (t_1.to_sec() - t_0.to_sec()) > 0.001:
+            #    print 'Controller updates took ' + repr((t_1.to_sec() - t_0.to_sec())*1000) + ' ms'
+            
 
             # update io
             for io in self.io.values():
                 io.update()
+                
+            #t_2 = rospy.Time.now()
+            #if (t_2.to_sec() - t_1.to_sec()) > 0.001:
+            #    print 'IO updates took ' + repr((t_2.to_sec() - t_1.to_sec())*1000) + ' ms'
 
             # publish feedback
             self.joint_state_publisher.update(self.joints.values(), self.controllers)
             self.diagnostics.update(self.joints.values(), self.controllers)
+            
+            #t_3 = rospy.Time.now()
+            #if (t_3.to_sec() - t_2.to_sec()) > 0.001:
+            #    print 'Publish feedback took ' + repr((t_3.to_sec() - t_2.to_sec())*1000) + ' ms'
 
             r.sleep()
+            
+            #t_4 = rospy.Time.now()
+            #print 'Sleep took ' + repr((t_4.to_sec() - t_3.to_sec())*1000) + ' ms'
 
         # do shutdown
         for controller in self.controllers:

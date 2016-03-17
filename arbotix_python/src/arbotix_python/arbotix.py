@@ -30,6 +30,8 @@
 
 ## @file arbotix.py Low-level code to control an ArbotiX.
 
+import rospy
+
 import serial, time, sys, thread
 from ax12 import *
 from struct import unpack
@@ -45,7 +47,7 @@ class ArbotiX:
     ##
     ## @param timeout The timeout to use for the port. When operating over a wireless link, you may need to
     ## increase this.
-    def __init__(self, port="/dev/ttyUSB0",baud=115200, timeout = 0.1):
+    def __init__(self, port="/dev/ttyUSB0",baud=115200, timeout = 0.001):
         self._mutex = thread.allocate_lock()
         self._ser = serial.Serial()
         
@@ -64,7 +66,13 @@ class ArbotiX:
     ## @return The error level returned by the device. 
     def getPacket(self, mode, id=-1, leng=-1, error=-1, params = None):
         try:
-            d = self._ser.read()     
+        
+            t_0 = rospy.Time.now().to_sec();
+            d = self._ser.read()
+            #print 'Time: ' + repr((rospy.Time.now().to_sec() - t_0)*1000)            
+            #if len(d) != 0:
+            #    print 'Content: ' + repr(d) 
+            
         except Exception as e:
             print e
             return None
@@ -122,20 +130,32 @@ class ArbotiX:
     ##
     ## @return The return packet, if read.
     def execute(self, index, ins, params, ret=True):
+        
+        #t_0 = rospy.Time.now();
+    
         values = None
-        self._mutex.acquire()  
-        try:      
-            self._ser.flushInput()
-        except Exception as e:
-            print e
+        self._mutex.acquire()
+        
+        #print 'Time for execution 0: ' + repr((rospy.Time.now().to_sec() - t_0.to_sec()) * 1000) + ' ms.'  
+        
+        #try:      
+        #    self._ser.flushInput()
+        #except Exception as e:
+        #    print e
         length = 2 + len(params)
         checksum = 255 - ((index + length + ins + sum(params))%256)
+        
+        #print 'Time for execution 1: ' + repr((rospy.Time.now().to_sec() - t_0.to_sec()) * 1000) + ' ms.'
+        
         try: 
             self._ser.write(chr(0xFF)+chr(0xFF)+chr(index)+chr(length)+chr(ins))
         except Exception as e:
             print e
             self._mutex.release()
             return None
+            
+        #print 'Time for execution 2: ' + repr((rospy.Time.now().to_sec() - t_0.to_sec()) * 1000) + ' ms.'
+            
         for val in params:
             try:
                 self._ser.write(chr(val))
@@ -143,15 +163,27 @@ class ArbotiX:
                 print e
                 self._mutex.release()
                 return None
+                
+        #print 'Time for execution 3: ' + repr((rospy.Time.now().to_sec() - t_0.to_sec()) * 1000) + ' ms.'        
+        
         try:
             self._ser.write(chr(checksum))
         except Exception as e:
             print e
             self._mutex.release()
             return None
+            
+        #print 'Time for execution 4: ' + repr((rospy.Time.now().to_sec() - t_0.to_sec()) * 1000) + ' ms.'    
+        
         if ret:
             values = self.getPacket(0)
+            
+        #print 'Time for execution 5: ' + repr((rospy.Time.now().to_sec() - t_0.to_sec()) * 1000) + ' ms.'
+            
         self._mutex.release()
+        
+        #print 'Time for execution 6: ' + repr((rospy.Time.now().to_sec() - t_0.to_sec()) * 1000) + ' ms.'
+        
         return values
     
     ## @brief Read values of registers.

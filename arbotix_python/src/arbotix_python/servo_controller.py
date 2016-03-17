@@ -387,7 +387,11 @@ class ServoController(Controller):
                     if joint.readable:
                         synclist.append(joint.id)
                 if len(synclist) > 0:
+                
+                    #t_0 = rospy.Time.now()
                     val = self.device.syncRead(synclist, P_PRESENT_POSITION_L, 2)
+                    #print 'syncRead took ' + repr((rospy.Time.now().to_sec() - t_0.to_sec())*1000) + ' milliseconds.'
+                    
                     if val: 
                         for joint in self.dynamixels:
                             try:
@@ -409,8 +413,12 @@ class ServoController(Controller):
                     v = joint.interpolate(1.0/self.w_delta.to_sec())
                     if v != None:   # if was dirty
                         syncpkt.append([joint.id,int(v)%256,int(v)>>8])                         
-                if len(syncpkt) > 0:      
+                if len(syncpkt) > 0:
+                
+                    t_1 = rospy.Time.now()  
                     self.device.syncWrite(P_GOAL_POSITION_L,syncpkt)
+                    print 'syncWrite took ' + repr((rospy.Time.now().to_sec() - t_1.to_sec())*1000) + ' milliseconds.'
+                    
             else:
                 for joint in self.dynamixels:
                     v = joint.interpolate(1.0/self.w_delta.to_sec())
