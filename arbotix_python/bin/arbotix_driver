@@ -165,8 +165,10 @@ class ArbotixROS(ArbotiX):
 
             r.sleep()
             
+            
             #t_4 = rospy.Time.now()
             #print 'Sleep took ' + repr((t_4.to_sec() - t_3.to_sec())*1000) + ' ms'
+            #print 'Main loop took ' + repr((t_4.to_sec() - t_0.to_sec())*1000) + ' ms'
 
         # do shutdown
         for controller in self.controllers:

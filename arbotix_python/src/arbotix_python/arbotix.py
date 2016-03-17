@@ -55,6 +55,7 @@ class ArbotiX:
         self._ser.port = port
         self._ser.timeout = timeout
         self._ser.open()
+        self._ser.flushInput()
 
         ## The last error level read back
         self.error = 0
@@ -67,7 +68,7 @@ class ArbotiX:
     def getPacket(self, mode, id=-1, leng=-1, error=-1, params = None):
         try:
         
-            t_0 = rospy.Time.now().to_sec();
+            #t_0 = rospy.Time.now().to_sec()
             d = self._ser.read()
             #print 'Time: ' + repr((rospy.Time.now().to_sec() - t_0)*1000)            
             #if len(d) != 0:
@@ -176,8 +177,21 @@ class ArbotiX:
         #print 'Time for execution 4: ' + repr((rospy.Time.now().to_sec() - t_0.to_sec()) * 1000) + ' ms.'    
         
         if ret:
-            values = self.getPacket(0)
             
+            #values = self.getPacket(0)
+            
+            # Get the latest available packet
+            values_current = self.getPacket(0)
+            values = values_current
+            i=0
+            while values_current!=None:
+                i += 1
+                values = values_current
+                values_current = self.getPacket(0)
+                
+            #print repr(i) + ' packages were waiting in the loop.'
+            #print 'Values: ' + repr(values)
+                        
         #print 'Time for execution 5: ' + repr((rospy.Time.now().to_sec() - t_0.to_sec()) * 1000) + ' ms.'
             
         self._mutex.release()
@@ -228,10 +242,11 @@ class ArbotiX:
         length = len(output) + 4                # length of overall packet
         lbytes = len(values[0])-1               # length of bytes to write to a servo               
         self._mutex.acquire()  
-        try:      
-            self._ser.flushInput()
-        except:
-            pass  
+        #try:      
+        #    self._ser.flushInput()
+        #    self._ser.flushOutput() # my
+        #except:
+        #    pass  
         self._ser.write(chr(0xFF)+chr(0xFF)+chr(254)+chr(length)+chr(AX_SYNC_WRITE))        
         self._ser.write(chr(start))              # start address
         self._ser.write(chr(lbytes))             # bytes to write each servo
